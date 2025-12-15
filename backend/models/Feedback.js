@@ -98,7 +98,7 @@ class Feedback {
   static async countRecent(hours = 1, queryParams = {}) {
     let query = `
       SELECT COUNT(*) FROM feedbacks 
-      WHERE created_at >= NOW() - INTERVAL '${hours} hour'
+      WHERE created_at >= NOW() - INTERVAL '${hours} hours'
     `;
     const values = [];
     let paramCount = 1;

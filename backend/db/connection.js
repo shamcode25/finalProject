@@ -5,9 +5,25 @@ dotenv.config();
 
 const { Pool } = pkg;
 
+// URL-encode password if it contains special characters
+let connectionString = process.env.DATABASE_URL || process.env.POSTGRESQL_URI;
+if (connectionString && connectionString.includes('@') && !connectionString.includes('%40')) {
+  // If password contains @, we need to URL-encode it
+  const match = connectionString.match(/postgresql:\/\/postgres:([^@]+)@/);
+  if (match && match[1].includes('@')) {
+    const encodedPassword = encodeURIComponent(match[1]);
+    connectionString = connectionString.replace(/postgres:([^@]+)@/, `postgres:${encodedPassword}@`);
+  }
+}
+
+// Check if this is a Supabase connection (requires SSL)
+const isSupabase = connectionString && connectionString.includes('supabase.co');
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.POSTGRESQL_URI,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  connectionString: connectionString,
+  ssl: isSupabase || process.env.NODE_ENV === 'production' 
+    ? { rejectUnauthorized: false } 
+    : false
 });
 
 // Test connection

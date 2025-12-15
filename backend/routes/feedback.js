@@ -32,7 +32,9 @@ router.post('/', async (req, res) => {
     res.status(201).json(feedback);
   } catch (error) {
     console.error('Error creating feedback:', error);
-    res.status(500).json({ error: 'Failed to create feedback' });
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: 'Failed to create feedback', details: error.message });
   }
 });
 
