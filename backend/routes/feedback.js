@@ -9,8 +9,8 @@ router.post('/', async (req, res) => {
   try {
     const { message, type, sessionId } = req.body;
 
-    if (!message || !message.trim()) {
-      return res.status(400).json({ error: 'Message is required' });
+    if (!message || !type) {
+      return res.status(400).json({ error: 'Message and type are required' });
     }
 
     // Analyze feedback with OpenAI
@@ -18,8 +18,8 @@ router.post('/', async (req, res) => {
 
     // Create feedback with AI analysis
     const feedback = new Feedback({
-      message: message.trim(),
-      type: type || 'other',
+      message,
+      type,
       sessionId: sessionId || 'default-session',
       sentiment: aiAnalysis.sentiment,
       aiClassification: aiAnalysis.classification,
@@ -28,15 +28,10 @@ router.post('/', async (req, res) => {
 
     await feedback.save();
 
-    // Emit to Socket.io (will be handled in server.js)
-    if (req.io) {
-      req.io.emit('new-feedback', feedback);
-    }
+    // Emit real-time update via socket.io (handled in server.js)
+    req.app.get('io').emit('new-feedback', feedback);
 
-    res.status(201).json({
-      success: true,
-      feedback: feedback
-    });
+    res.status(201).json(feedback);
   } catch (error) {
     console.error('Error creating feedback:', error);
     res.status(500).json({ error: 'Failed to create feedback' });
@@ -46,22 +41,18 @@ router.post('/', async (req, res) => {
 // GET /api/feedback - Get all feedback
 router.get('/', async (req, res) => {
   try {
-    const { sessionId, type, sentiment, limit = 50 } = req.query;
-    
+    const { sessionId, type, sentiment } = req.query;
     const query = {};
+
     if (sessionId) query.sessionId = sessionId;
     if (type) query.type = type;
     if (sentiment) query.sentiment = sentiment;
 
     const feedbacks = await Feedback.find(query)
       .sort({ timestamp: -1 })
-      .limit(parseInt(limit));
+      .limit(100);
 
-    res.json({
-      success: true,
-      count: feedbacks.length,
-      feedbacks: feedbacks
-    });
+    res.json(feedbacks);
   } catch (error) {
     console.error('Error fetching feedback:', error);
     res.status(500).json({ error: 'Failed to fetch feedback' });
@@ -76,47 +67,35 @@ router.get('/stats', async (req, res) => {
 
     const total = await Feedback.countDocuments(query);
     
-    // Count by type
     const byType = await Feedback.aggregate([
       { $match: query },
       { $group: { _id: '$type', count: { $sum: 1 } } }
     ]);
 
-    // Count by sentiment
     const bySentiment = await Feedback.aggregate([
       { $match: query },
       { $group: { _id: '$sentiment', count: { $sum: 1 } } }
     ]);
 
-    // Recent feedback (last hour)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const recentCount = await Feedback.countDocuments({
       ...query,
-      timestamp: { $gte: oneHourAgo }
+      timestamp: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // Last hour
     });
 
-    // Average confidence
-    const avgConfidence = await Feedback.aggregate([
-      { $match: query },
-      { $group: { _id: null, avg: { $avg: '$confidence' } } }
-    ]);
+    const stats = {
+      total,
+      recentCount,
+      byType: byType.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
+      bySentiment: bySentiment.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {})
+    };
 
-    res.json({
-      success: true,
-      stats: {
-        total,
-        recent: recentCount,
-        byType: byType.reduce((acc, item) => {
-          acc[item._id] = item.count;
-          return acc;
-        }, {}),
-        bySentiment: bySentiment.reduce((acc, item) => {
-          acc[item._id] = item.count;
-          return acc;
-        }, {}),
-        avgConfidence: avgConfidence[0]?.avg || 0
-      }
-    });
+    res.json(stats);
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch statistics' });
@@ -126,19 +105,16 @@ router.get('/stats', async (req, res) => {
 // GET /api/feedback/summary - Get AI-generated summary
 router.get('/summary', async (req, res) => {
   try {
-    const { sessionId, limit = 20 } = req.query;
+    const { sessionId } = req.query;
     const query = sessionId ? { sessionId } : {};
 
     const feedbacks = await Feedback.find(query)
       .sort({ timestamp: -1 })
-      .limit(parseInt(limit));
+      .limit(50);
 
     const summary = await generateFeedbackSummary(feedbacks);
 
-    res.json({
-      success: true,
-      summary: summary
-    });
+    res.json(summary);
   } catch (error) {
     console.error('Error generating summary:', error);
     res.status(500).json({ error: 'Failed to generate summary' });
@@ -155,14 +131,10 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Feedback not found' });
     }
 
-    if (req.io) {
-      req.io.emit('feedback-deleted', { id });
-    }
+    // Emit deletion event
+    req.app.get('io').emit('feedback-deleted', id);
 
-    res.json({
-      success: true,
-      message: 'Feedback deleted successfully'
-    });
+    res.json({ message: 'Feedback deleted successfully' });
   } catch (error) {
     console.error('Error deleting feedback:', error);
     res.status(500).json({ error: 'Failed to delete feedback' });
@@ -170,4 +142,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 export default router;
-

@@ -8,9 +8,8 @@ const feedbackSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    required: true,
     enum: ['confused', 'too-fast', 'too-slow', 'great', 'question', 'other'],
-    default: 'other'
+    required: true
   },
   sessionId: {
     type: String,
@@ -38,4 +37,3 @@ const feedbackSchema = new mongoose.Schema({
 });
 
 export default mongoose.model('Feedback', feedbackSchema);
-

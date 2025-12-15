@@ -1,4 +1,7 @@
 import OpenAI from 'openai';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -10,7 +13,7 @@ const openai = new OpenAI({
 export async function analyzeFeedback(message, userType) {
   try {
     if (!process.env.OPENAI_API_KEY) {
-      // Fallback if no API key
+      // Fallback if no API key is provided
       return {
         sentiment: 'neutral',
         classification: userType || 'other',
@@ -24,8 +27,14 @@ export async function analyzeFeedback(message, userType) {
 3. Confidence: a number between 0 and 1
 
 Feedback: "${message}"
+User selected type: ${userType}
 
-Respond in JSON format: {"sentiment": "positive|negative|neutral", "classification": "category", "confidence": 0.0-1.0}`;
+Respond in JSON format:
+{
+  "sentiment": "positive|negative|neutral",
+  "classification": "confused|too-fast|too-slow|great|question|other",
+  "confidence": 0.0-1.0
+}`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
@@ -44,29 +53,26 @@ Respond in JSON format: {"sentiment": "positive|negative|neutral", "classificati
     });
 
     const responseText = completion.choices[0].message.content.trim();
-    
-    // Try to parse JSON response
-    let analysis;
-    try {
-      analysis = JSON.parse(responseText);
-    } catch (e) {
-      // Fallback parsing if JSON is wrapped in code blocks
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        analysis = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('Invalid JSON response');
-      }
+    // Extract JSON from response (handle cases where response might have markdown)
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const analysis = JSON.parse(jsonMatch[0]);
+      return {
+        sentiment: analysis.sentiment || 'neutral',
+        classification: analysis.classification || userType || 'other',
+        confidence: analysis.confidence || 0.5
+      };
     }
 
+    // Fallback if parsing fails
     return {
-      sentiment: analysis.sentiment || 'neutral',
-      classification: analysis.classification || userType || 'other',
-      confidence: analysis.confidence || 0.5
+      sentiment: 'neutral',
+      classification: userType || 'other',
+      confidence: 0.5
     };
   } catch (error) {
     console.error('OpenAI API Error:', error.message);
-    // Fallback response
+    // Return fallback values on error
     return {
       sentiment: 'neutral',
       classification: userType || 'other',
@@ -82,30 +88,30 @@ export async function generateFeedbackSummary(feedbacks) {
   try {
     if (!process.env.OPENAI_API_KEY || feedbacks.length === 0) {
       return {
-        summary: 'No feedback available for summary.',
-        keyPoints: [],
+        summary: 'No feedback available to summarize.',
+        keyInsights: [],
         recommendations: []
       };
     }
 
-    const feedbackTexts = feedbacks
+    const feedbackText = feedbacks
       .slice(-20) // Last 20 feedbacks
       .map(f => `[${f.type}] ${f.message}`)
       .join('\n');
 
-    const prompt = `Analyze the following student feedback and provide:
+    const prompt = `As an educational consultant, analyze the following student feedback from a class session and provide:
 1. A brief summary (2-3 sentences)
-2. Key points (3-5 bullet points)
-3. Recommendations for the professor (2-3 actionable items)
+2. Key insights (3-5 bullet points)
+3. Actionable recommendations (2-3 suggestions)
 
-Feedback:
-${feedbackTexts}
+Student Feedback:
+${feedbackText}
 
 Respond in JSON format:
 {
   "summary": "brief summary text",
-  "keyPoints": ["point1", "point2", ...],
-  "recommendations": ["rec1", "rec2", ...]
+  "keyInsights": ["insight1", "insight2", ...],
+  "recommendations": ["recommendation1", "recommendation2", ...]
 }`;
 
     const completion = await openai.chat.completions.create({
@@ -113,7 +119,7 @@ Respond in JSON format:
       messages: [
         {
           role: "system",
-          content: "You are an AI assistant that helps professors understand student feedback. Always respond with valid JSON only."
+          content: "You are an educational consultant helping professors improve their teaching. Always respond with valid JSON only."
         },
         {
           role: "user",
@@ -125,31 +131,22 @@ Respond in JSON format:
     });
 
     const responseText = completion.choices[0].message.content.trim();
-    
-    let summary;
-    try {
-      summary = JSON.parse(responseText);
-    } catch (e) {
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        summary = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('Invalid JSON response');
-      }
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
     }
 
     return {
-      summary: summary.summary || 'Summary generation failed.',
-      keyPoints: summary.keyPoints || [],
-      recommendations: summary.recommendations || []
+      summary: 'Unable to generate summary at this time.',
+      keyInsights: [],
+      recommendations: []
     };
   } catch (error) {
     console.error('OpenAI Summary Error:', error.message);
     return {
-      summary: 'Unable to generate summary at this time.',
-      keyPoints: [],
+      summary: 'Error generating summary. Please try again later.',
+      keyInsights: [],
       recommendations: []
     };
   }
 }
-
