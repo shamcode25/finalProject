@@ -1,0 +1,5 @@
+NODE_ENV=production
+PORT=10000
+DATABASE_URL=postgresql://postgres.lbxplpedvwkshhelrzgi:Eh%40tasham113902@aws-1-us-east-2.pooler.supabase.com:6543/postgres
+OPENAI_API_KEY=your_openai_api_key_here
+FRONTEND_URL=https://placeholder.vercel.app
