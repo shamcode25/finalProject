@@ -36,8 +36,8 @@ A full-stack web application that allows students to submit anonymous feedback d
 ### Backend
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web framework
-- **MongoDB** - NoSQL database
-- **Mongoose** - MongoDB object modeling
+- **PostgreSQL** - Relational database
+- **pg (node-postgres)** - PostgreSQL client for Node.js
 - **Socket.io** - Real-time bidirectional communication
 - **OpenAI API** - AI-powered sentiment analysis and text classification
 
@@ -46,7 +46,7 @@ A full-stack web application that allows students to submit anonymous feedback d
 Before you begin, ensure you have:
 - Node.js (v18 or higher)
 - npm or yarn
-- MongoDB (local or MongoDB Atlas account)
+- PostgreSQL (local installation or cloud database like Supabase, Railway, or Neon)
 - OpenAI API key (optional, but recommended for full functionality)
 
 ## 🔧 Installation & Setup
@@ -68,16 +68,18 @@ npm install
 Create a `.env` file in the `backend` directory:
 
 ```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/feedback-dashboard
-# Or use MongoDB Atlas:
-# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/feedback-dashboard
+PORT=5001
+DATABASE_URL=postgresql://localhost:5432/feedback_dashboard
+# Or use cloud PostgreSQL (Supabase, Railway, Neon, etc.):
+# DATABASE_URL=postgresql://user:password@host:5432/database
 OPENAI_API_KEY=your_openai_api_key_here
 NODE_ENV=development
 FRONTEND_URL=http://localhost:5173
 ```
 
-**Note**: If you don't have an OpenAI API key, the app will still work but with limited AI features (fallback to basic classification).
+**Note**: 
+- If you don't have an OpenAI API key, the app will still work but with limited AI features (fallback to basic classification).
+- The database schema will be automatically created on first run.
 
 ### 3. Frontend Setup
 
@@ -171,7 +173,7 @@ The application will be available at:
    - Set build command: `cd backend && npm install`
    - Set start command: `cd backend && npm start`
    - Add environment variables:
-     - `MONGODB_URI` (your MongoDB connection string)
+     - `DATABASE_URL` (your PostgreSQL connection string)
      - `OPENAI_API_KEY` (your OpenAI API key)
      - `FRONTEND_URL` (your frontend URL)
      - `NODE_ENV=production`
@@ -202,13 +204,53 @@ The application will be available at:
      - `VITE_SOCKET_URL` (your backend URL)
    - Deploy
 
-### MongoDB Atlas Setup
+### PostgreSQL Setup
 
-1. Create account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a new cluster (free tier available)
-3. Create a database user
-4. Whitelist your IP address (or use 0.0.0.0/0 for all IPs)
-5. Get connection string and use it as `MONGODB_URI`
+#### Option 1: Local PostgreSQL
+
+1. Install PostgreSQL:
+   ```bash
+   # macOS with Homebrew:
+   brew install postgresql
+   brew services start postgresql
+   
+   # Or download from: https://www.postgresql.org/download/
+   ```
+
+2. Create database:
+   ```bash
+   createdb feedback_dashboard
+   # Or using psql:
+   psql -c "CREATE DATABASE feedback_dashboard;"
+   ```
+
+3. Update `.env`:
+   ```
+   DATABASE_URL=postgresql://localhost:5432/feedback_dashboard
+   ```
+
+#### Option 2: Cloud PostgreSQL (Recommended)
+
+**Supabase (Free Tier):**
+1. Sign up at [Supabase](https://supabase.com)
+2. Create a new project
+3. Go to Settings → Database
+4. Copy the connection string
+5. Update `.env` with the connection string
+
+**Railway:**
+1. Sign up at [Railway](https://railway.app)
+2. Create a new PostgreSQL database
+3. Copy the connection string
+4. Update `.env`
+
+**Neon (Free Tier):**
+1. Sign up at [Neon](https://neon.tech)
+2. Create a new project
+3. Copy the connection string
+4. Update `.env`
+
+The database schema (tables) will be automatically created when you start the server.
 
 ## 🧪 Testing
 
