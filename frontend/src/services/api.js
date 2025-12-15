@@ -1,17 +1,16 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Feedback API
-export const feedbackAPI = {
-  // Submit feedback
+export const feedbackService = {
+  // Submit new feedback
   submitFeedback: async (message, type, sessionId = 'default-session') => {
     try {
       const response = await api.post('/feedback', {
@@ -26,9 +25,14 @@ export const feedbackAPI = {
   },
 
   // Get all feedback
-  getFeedback: async (params = {}) => {
+  getAllFeedback: async (filters = {}) => {
     try {
-      const response = await api.get('/feedback', { params });
+      const params = new URLSearchParams();
+      if (filters.sessionId) params.append('sessionId', filters.sessionId);
+      if (filters.type) params.append('type', filters.type);
+      if (filters.sentiment) params.append('sentiment', filters.sentiment);
+
+      const response = await api.get(`/feedback?${params.toString()}`);
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to fetch feedback');
@@ -36,11 +40,10 @@ export const feedbackAPI = {
   },
 
   // Get statistics
-  getStats: async (sessionId) => {
+  getStats: async (sessionId = null) => {
     try {
-      const response = await api.get('/feedback/stats', {
-        params: sessionId ? { sessionId } : {},
-      });
+      const params = sessionId ? `?sessionId=${sessionId}` : '';
+      const response = await api.get(`/feedback/stats${params}`);
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to fetch statistics');
@@ -48,11 +51,10 @@ export const feedbackAPI = {
   },
 
   // Get AI summary
-  getSummary: async (sessionId, limit = 20) => {
+  getSummary: async (sessionId = null) => {
     try {
-      const response = await api.get('/feedback/summary', {
-        params: { sessionId, limit },
-      });
+      const params = sessionId ? `?sessionId=${sessionId}` : '';
+      const response = await api.get(`/feedback/summary${params}`);
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to fetch summary');
@@ -71,4 +73,3 @@ export const feedbackAPI = {
 };
 
 export default api;
-
