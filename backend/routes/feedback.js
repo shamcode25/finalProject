@@ -29,7 +29,9 @@ router.post('/', async (req, res) => {
     await feedback.save();
 
     // Emit to Socket.io (will be handled in server.js)
-    req.io.emit('new-feedback', feedback);
+    if (req.io) {
+      req.io.emit('new-feedback', feedback);
+    }
 
     res.status(201).json({
       success: true,
@@ -153,7 +155,9 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Feedback not found' });
     }
 
-    req.io.emit('feedback-deleted', { id });
+    if (req.io) {
+      req.io.emit('feedback-deleted', { id });
+    }
 
     res.json({
       success: true,
