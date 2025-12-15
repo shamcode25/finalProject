@@ -1,5 +1,13 @@
 # Real-Time Student Feedback Dashboard
 
+## 🚀 Live Deployment
+
+- **Frontend (Vercel)**: https://finalproject-zeta-seven.vercel.app/
+- **Backend (Render)**: https://finalproject-9j01.onrender.com
+- **Health Check**: https://finalproject-9j01.onrender.com/health
+
+---
+
 A full-stack web application that allows students to submit anonymous feedback during class, while professors can view real-time feedback with AI-powered analytics to improve engagement.
 
 ## 🚀 Features
