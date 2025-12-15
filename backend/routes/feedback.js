@@ -17,7 +17,7 @@ router.post('/', async (req, res) => {
     const aiAnalysis = await analyzeFeedback(message, type);
 
     // Create feedback with AI analysis
-    const feedback = new Feedback({
+    const feedback = await Feedback.create({
       message,
       type,
       sessionId: sessionId || 'default-session',
@@ -25,8 +25,6 @@ router.post('/', async (req, res) => {
       aiClassification: aiAnalysis.classification,
       confidence: aiAnalysis.confidence
     });
-
-    await feedback.save();
 
     // Emit real-time update via socket.io (handled in server.js)
     req.app.get('io').emit('new-feedback', feedback);
@@ -42,15 +40,13 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { sessionId, type, sentiment } = req.query;
-    const query = {};
+    const queryParams = {};
 
-    if (sessionId) query.sessionId = sessionId;
-    if (type) query.type = type;
-    if (sentiment) query.sentiment = sentiment;
+    if (sessionId) queryParams.sessionId = sessionId;
+    if (type) queryParams.type = type;
+    if (sentiment) queryParams.sentiment = sentiment;
 
-    const feedbacks = await Feedback.find(query)
-      .sort({ timestamp: -1 })
-      .limit(100);
+    const feedbacks = await Feedback.findAll(queryParams);
 
     res.json(feedbacks);
   } catch (error) {
@@ -63,36 +59,29 @@ router.get('/', async (req, res) => {
 router.get('/stats', async (req, res) => {
   try {
     const { sessionId } = req.query;
-    const query = sessionId ? { sessionId } : {};
+    const queryParams = sessionId ? { sessionId } : {};
 
-    const total = await Feedback.countDocuments(query);
+    const total = await Feedback.count(queryParams);
     
-    const byType = await Feedback.aggregate([
-      { $match: query },
-      { $group: { _id: '$type', count: { $sum: 1 } } }
-    ]);
+    const byTypeRows = await Feedback.aggregateByField('type', queryParams);
+    const byType = byTypeRows.reduce((acc, row) => {
+      acc[row.type] = parseInt(row.count);
+      return acc;
+    }, {});
 
-    const bySentiment = await Feedback.aggregate([
-      { $match: query },
-      { $group: { _id: '$sentiment', count: { $sum: 1 } } }
-    ]);
+    const bySentimentRows = await Feedback.aggregateByField('sentiment', queryParams);
+    const bySentiment = bySentimentRows.reduce((acc, row) => {
+      acc[row.sentiment] = parseInt(row.count);
+      return acc;
+    }, {});
 
-    const recentCount = await Feedback.countDocuments({
-      ...query,
-      timestamp: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // Last hour
-    });
+    const recentCount = await Feedback.countRecent(1, queryParams);
 
     const stats = {
       total,
       recentCount,
-      byType: byType.reduce((acc, item) => {
-        acc[item._id] = item.count;
-        return acc;
-      }, {}),
-      bySentiment: bySentiment.reduce((acc, item) => {
-        acc[item._id] = item.count;
-        return acc;
-      }, {})
+      byType,
+      bySentiment
     };
 
     res.json(stats);
@@ -106,13 +95,12 @@ router.get('/stats', async (req, res) => {
 router.get('/summary', async (req, res) => {
   try {
     const { sessionId } = req.query;
-    const query = sessionId ? { sessionId } : {};
+    const queryParams = sessionId ? { sessionId } : {};
 
-    const feedbacks = await Feedback.find(query)
-      .sort({ timestamp: -1 })
-      .limit(50);
+    const feedbacks = await Feedback.findAll(queryParams);
+    const limitedFeedbacks = feedbacks.slice(0, 50);
 
-    const summary = await generateFeedbackSummary(feedbacks);
+    const summary = await generateFeedbackSummary(limitedFeedbacks);
 
     res.json(summary);
   } catch (error) {
@@ -125,7 +113,7 @@ router.get('/summary', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const feedback = await Feedback.findByIdAndDelete(id);
+    const feedback = await Feedback.deleteById(id);
 
     if (!feedback) {
       return res.status(404).json({ error: 'Feedback not found' });
