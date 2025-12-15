@@ -271,7 +271,7 @@ The database schema (tables) will be automatically created when you start the se
 FinalProject/
 ├── backend/
 │   ├── models/
-│   │   └── Feedback.js          # MongoDB schema
+│   │   └── Feedback.js          # PostgreSQL model
 │   ├── routes/
 │   │   └── feedback.js          # API routes
 │   ├── services/
@@ -315,9 +315,10 @@ FinalProject/
 ## 🐛 Troubleshooting
 
 ### Backend won't start
-- Check MongoDB connection string
+- Check PostgreSQL connection string
 - Verify PORT is not in use
 - Check environment variables
+- Ensure database exists (for local PostgreSQL)
 
 ### Frontend can't connect to backend
 - Verify backend is running
@@ -362,7 +363,7 @@ This project follows conventional commits:
 
 This project demonstrates:
 - Full-stack development (React + Express)
-- Database integration (MongoDB)
+- Database integration (PostgreSQL)
 - Real-time communication (WebSocket)
 - AI/ML integration (OpenAI API)
 - RESTful API design
