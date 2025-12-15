@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { feedbackAPI } from '../services/api';
 import { getSocket } from '../services/socket';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 const FEEDBACK_TYPE_LABELS = {
   'confused': '😕 Confused',
@@ -114,10 +115,7 @@ export default function ProfessorView() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
+        <LoadingSpinner message="Loading dashboard..." />
       </div>
     );
   }
