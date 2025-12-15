@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { feedbackService } from '../services/api';
 import { createSocket } from '../services/socket';
 import FeedbackCard from '../components/FeedbackCard';
@@ -29,13 +29,14 @@ function ProfessorView() {
   const [filterType, setFilterType] = useState('all');
   const [filterSentiment, setFilterSentiment] = useState('all');
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     loadData();
-    setupSocket();
+    const cleanup = setupSocket();
 
     return () => {
-      // Cleanup socket on unmount
+      if (cleanup) cleanup();
     };
   }, []);
 
@@ -69,6 +70,7 @@ function ProfessorView() {
 
   const setupSocket = () => {
     const socket = createSocket();
+    socketRef.current = socket;
 
     socket.on('connect', () => {
       console.log('Connected to server');
@@ -84,7 +86,12 @@ function ProfessorView() {
       loadData(); // Reload stats
     });
 
-    return () => socket.disconnect();
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
   };
 
   const handleDelete = async (id) => {
