@@ -72,6 +72,7 @@ Respond in JSON format:
     };
   } catch (error) {
     console.error('OpenAI API Error:', error.message);
+    console.error('Error details:', error.response?.data || error);
     // Return fallback values on error
     return {
       sentiment: 'neutral',

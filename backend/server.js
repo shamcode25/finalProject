@@ -18,6 +18,7 @@ const io = new Server(httpServer, {
 });
 
 const PORT = process.env.PORT || 5001;
+// Render uses port from environment variable, default to 10000 for production
 const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRESQL_URI;
 
 // Middleware

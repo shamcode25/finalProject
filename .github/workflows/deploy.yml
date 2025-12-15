@@ -1,0 +1,13 @@
+# Optional: GitHub Actions workflow for CI/CD
+# This is optional - you can deploy directly from Vercel and Render
+
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  # Add deployment jobs here if needed
+  # Vercel and Render can auto-deploy from GitHub
+
